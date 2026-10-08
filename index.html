@@ -101,6 +101,29 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const iconOk='<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6.5"/></svg>';
 const iconBad='<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
+
+async function findPdf(code){
+  const f=encodeURIComponent(code)+".pdf";
+  const dirs=["pdf/","Subir_PDF_parte1/pdf/","Subir_PDF_parte2/pdf/","pdf%201/","pdf%202/","pdf1/","pdf2/",""];
+  for(const d of dirs){
+    try{const r=await fetch(d+f,{method:"HEAD",cache:"no-store"}); if(r.ok) return d+f;}catch(e){}
+  }
+  return null;
+}
+function wireDownload(){
+  const a=document.getElementById("dlbtn"); if(!a) return;
+  a.addEventListener("click",async e=>{
+    e.preventDefault();
+    const msg=document.getElementById("dlmsg"); const code=a.dataset.code;
+    msg.textContent="Buscando el certificado…";
+    const url=await findPdf(code);
+    if(!url){msg.textContent="El PDF de este certificado todavía no está disponible. Intente más tarde o contacte a BARENCO INGENIERÍA.";return}
+    msg.textContent="Descargando…";
+    const l=document.createElement("a"); l.href=url; l.download="Certificado_"+code+".pdf";
+    document.body.appendChild(l); l.click(); l.remove();
+    setTimeout(()=>{msg.textContent="Si no se descargó, abra el PDF aquí: "; const o=document.createElement("a"); o.href=url; o.target="_blank"; o.rel="noopener"; o.textContent="ver certificado"; o.style.color="inherit"; msg.appendChild(o);},1200);
+  });
+}
 async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("").slice(0,16)}
 function show(d,query){
   const r=$("#result"); r.hidden=false;
@@ -117,7 +140,8 @@ function show(d,query){
     <dt>Código</dt><dd class="mono">${esc(d.c)}</dd>
     <dt>Firma</dt><dd>${COURSE.signer}</dd>
   </dl>
-  <div class="dl"><a href="pdf/${encodeURIComponent(d.c)}.pdf" download="Certificado_${esc(d.c)}.pdf" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>Descargar certificado (PDF)</a><small>Documento original emitido por BARENCO INGENIERÍA.</small></div>`;
+  <div class="dl"><a href="pdf/${encodeURIComponent(d.c)}.pdf" data-code="${esc(d.c)}" id="dlbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>Descargar certificado (PDF)</a><small id="dlmsg">Documento original emitido por BARENCO INGENIERÍA.</small></div>`;
+  wireDownload();
 }
 async function lookup(raw){
   const q=raw.trim().toUpperCase().replace(/\s+/g,"");
